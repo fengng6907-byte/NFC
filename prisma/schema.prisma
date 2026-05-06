@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  groupMemberships  GroupMember[]
+  paidExpenses      Expense[]       @relation("Payer")
+  expenseShares     ExpenseShare[]
+  sentSettlements   Settlement[]    @relation("Sender")
+  receivedSettlements Settlement[]  @relation("Receiver")
+  notifications     Notification[]
+  badges            UserBadge[]
+  accounts          Account[]
+  sessions          Session[]
+
+  // Gamification
+  streakDays        Int      @default(0)
+  lastSettledAt     DateTime?
+  totalSettled      Float    @default(0)
+  points            Int      @default(0)
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  emoji       String   @default("🏠")
+  type        GroupType @default(OTHER)
+  color       String   @default("#F5B800")
+  coverImage  String?
+  currency    String   @default("USD")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isArchived  Boolean  @default(false)
+
+  createdById String
+  members     GroupMember[]
+  expenses    Expense[]
+
+  @@map("groups")
+}
+
+enum GroupType {
+  TRIP
+  HOME
+  FRIENDS
+  BUSINESS
+  EVENT
+  OTHER
+}
+
+model GroupMember {
+  id       String          @id @default(cuid())
+  userId   String
+  groupId  String
+  role     GroupMemberRole @default(MEMBER)
+  joinedAt DateTime        @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("group_members")
+}
+
+enum GroupMemberRole {
+  ADMIN
+  MEMBER
+}
+
+model Expense {
+  id          String       @id @default(cuid())
+  title       String
+  amount      Float
+  currency    String       @default("USD")
+  category    Category     @default(OTHER)
+  splitMethod SplitMethod  @default(EQUAL)
+  date        DateTime     @default(now())
+  notes       String?
+  receiptUrl  String?
+  isSettled   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // AI categorization confidence
+  aiCategory      String?
+  aiConfidence    Float?
+
+  payerId  String
+  groupId  String
+
+  payer    User           @relation("Payer", fields: [payerId], references: [id])
+  group    Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  shares   ExpenseShare[]
+
+  @@map("expenses")
+}
+
+enum Category {
+  FOOD
+  TRANSPORT
+  ACCOMMODATION
+  ENTERTAINMENT
+  SHOPPING
+  UTILITIES
+  HEALTH
+  TRAVEL
+  SPORTS
+  EDUCATION
+  OTHER
+}
+
+enum SplitMethod {
+  EQUAL
+  PERCENTAGE
+  EXACT
+  SHARES
+}
+
+model ExpenseShare {
+  id        String  @id @default(cuid())
+  expenseId String
+  userId    String
+  amount    Float
+  percent   Float?
+  shares    Int?
+  isPaid    Boolean @default(false)
+  paidAt    DateTime?
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, userId])
+  @@map("expense_shares")
+}
+
+model Settlement {
+  id         String           @id @default(cuid())
+  amount     Float
+  currency   String           @default("USD")
+  notes      String?
+  method     SettlementMethod @default(CASH)
+  status     SettlementStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  settledAt  DateTime?
+
+  senderId   String
+  receiverId String
+  groupId    String?
+
+  sender   User @relation("Sender", fields: [senderId], references: [id])
+  receiver User @relation("Receiver", fields: [receiverId], references: [id])
+
+  @@map("settlements")
+}
+
+enum SettlementMethod {
+  CASH
+  BANK_TRANSFER
+  PAYPAL
+  VENMO
+  OTHER
+}
+
+enum SettlementStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  data      Json?
+  createdAt DateTime         @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  EXPENSE_ADDED
+  SETTLEMENT_REQUESTED
+  SETTLEMENT_COMPLETED
+  GROUP_INVITE
+  REMINDER
+  BADGE_EARNED
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  color       String
+  condition   String
+  points      Int         @default(10)
+
+  users UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}

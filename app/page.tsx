@@ -1,33 +1,21 @@
-import Nav from '@/components/Nav'
-import Hero from '@/components/Hero'
-import InteractiveDemo from '@/components/InteractiveDemo'
-import IndustrySwitch from '@/components/IndustrySwitch'
-import Features from '@/components/Features'
-import AnalyticsDashboard from '@/components/AnalyticsDashboard'
-import ROICalculator from '@/components/ROICalculator'
-import Comparison from '@/components/Comparison'
-import HowItWorks from '@/components/HowItWorks'
-import Pricing from '@/components/Pricing'
-import Testimonials from '@/components/Testimonials'
-import FinalCTA from '@/components/FinalCTA'
-import Footer from '@/components/Footer'
+import { LandingNav } from '@/components/landing/LandingNav'
+import { Hero } from '@/components/landing/Hero'
+import { Features } from '@/components/landing/Features'
+import { HowItWorks } from '@/components/landing/HowItWorks'
+import { Testimonials } from '@/components/landing/Testimonials'
+import { Pricing } from '@/components/landing/Pricing'
+import { Footer } from '@/components/landing/Footer'
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <main className="overflow-x-hidden">
-      <Nav />
+    <div className="min-h-screen bg-[#0D1B2A] text-white overflow-x-hidden">
+      <LandingNav />
       <Hero />
-      <InteractiveDemo />
-      <IndustrySwitch />
       <Features />
-      <AnalyticsDashboard />
-      <ROICalculator />
-      <Comparison />
       <HowItWorks />
-      <Pricing />
       <Testimonials />
-      <FinalCTA />
+      <Pricing />
       <Footer />
-    </main>
+    </div>
   )
 }
